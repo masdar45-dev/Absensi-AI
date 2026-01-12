@@ -2,443 +2,788 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BioGuard Pro v5.0 | Anti-Spoofing Edition</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sistem Absensi Sekolah Pro (Guru & Siswa)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Face API JS -->
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
-        :root {
-            --p-blue: #020617;
-            --s-blue: #1e293b;
-            --accent: #3b82f6;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --background: #f8fafc;
-            --surface: #ffffff;
-            --border: #e2e8f0;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --radius-lg: 16px;
-            --radius-md: 12px;
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4f46e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .scan-box {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 250px; height: 250px; border: 2px solid rgba(255,255,255,0.5); border-radius: 12px;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.75);
+            transition: border-color 0.3s, box-shadow 0.3s;
         }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-        body { font-family: 'Inter', sans-serif; background: var(--background); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
-
-        /* Sidebar & Layout */
-        aside { width: 280px; background: var(--p-blue); color: white; padding: 32px 24px; display: flex; flex-direction: column; }
-        main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        header { height: 80px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 40px; }
-
-        .brand-logo { width: 40px; height: 40px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-family: 'Plus Jakarta Sans'; margin-bottom: 40px; }
+        .scan-box.active { border-color: #22c55e; box-shadow: 0 0 0 9999px rgba(0,0,0,0.85), inset 0 0 30px rgba(34,197,94,0.3); }
+        .tab-btn.active { background-color: #4f46e5; color: white; border-color: #4f46e5; }
         
-        .nav-link { padding: 14px 16px; color: #94a3b8; text-decoration: none; border-radius: var(--radius-md); margin-bottom: 8px; font-size: 14px; cursor: pointer; border: none; background: transparent; width: 100%; text-align: left; display: flex; align-items: center; gap: 12px; }
-        .nav-link.active { background: var(--accent); color: white; }
-
-        .content-scroll { flex: 1; padding: 40px; overflow-y: auto; }
-        .page { display: none; }
-        .page.active { display: block; }
-
-        /* Liveness UI Elements */
-        .camera-wrapper { position: relative; background: #000; border-radius: 24px; overflow: hidden; aspect-ratio: 16/9; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 4px solid white; }
-        #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        #canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: scaleX(-1); }
-
-        .liveness-overlay {
-            position: absolute; top: 20px; left: 20px; right: 20px;
-            display: flex; justify-content: space-between; align-items: center; z-index: 10;
-        }
-
-        .liveness-badge {
-            padding: 8px 16px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 1px; backdrop-filter: blur(10px); color: white;
-            display: flex; align-items: center; gap: 8px;
-        }
-        .status-scanning { background: rgba(59, 130, 246, 0.5); border: 1px solid rgba(59, 130, 246, 0.5); }
-        .status-alert { background: rgba(239, 68, 68, 0.5); border: 1px solid rgba(239, 68, 68, 0.5); }
-
-        .challenge-box {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px);
-            padding: 16px 32px; border-radius: 40px; color: white; text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.2); z-index: 10; min-width: 300px;
-        }
-
-        .blink-indicator { width: 12px; height: 12px; border-radius: 50%; background: #94a3b8; transition: 0.2s; }
-        .blink-active { background: var(--success); box-shadow: 0 0 15px var(--success); }
-
-        /* Stats & Logs */
-        .grid-main { display: grid; grid-template-columns: 1.5fr 1fr; gap: 32px; }
-        .monitor-card { background: white; border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 24px; }
-        #log-stream { height: 300px; overflow-y: auto; margin-top: 16px; font-size: 13px; }
-        .log-item { padding: 10px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
-
-        /* Buttons */
-        .btn { padding: 12px 24px; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
-        .btn-primary { background: var(--accent); color: white; }
-        
-        #system-loader { position: fixed; inset: 0; background: white; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-
-        .spoof-detected { animation: shake 0.5s; border-color: var(--danger) !important; }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+        /* Filter Button Active State */
+        .filter-btn.active { background-color: #4f46e5; color: white; border-color: #4f46e5; }
     </style>
 </head>
-<body>
+<body class="h-screen flex flex-col overflow-hidden text-gray-800">
 
-    <div id="system-loader">
-        <div class="spinner"></div>
-        <p style="margin-top: 20px; color: var(--text-muted); font-size: 14px;">Mengaktifkan Liveness Engine...</p>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="fixed inset-0 bg-white z-[60] flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="loader mb-4"></div>
+        <h2 class="text-xl font-bold text-gray-800">Memuat Sistem AI...</h2>
+        <p class="text-gray-500 text-sm mt-2">Menghubungkan ke Database Sekolah</p>
     </div>
 
-    <aside>
-        <div class="brand-logo">B</div>
-        <button class="nav-link active" onclick="navigate('dashboard', this)"><span>📷</span> Absensi Live</button>
-        <button class="nav-link" onclick="navigate('database', this)"><span>👥</span> Data Personil</button>
-        <button class="nav-link" onclick="navigate('history', this)"><span>📊</span> Log Keamanan</button>
-        
-        <div style="margin-top: auto; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 12px; font-size: 11px;">
-            <p style="color: #94a3b8; margin-bottom: 4px;">ANTI-SPOOFING</p>
-            <p style="font-weight: 700; color: var(--success);">Blink Detection Active</p>
+    <!-- Header -->
+    <header class="bg-indigo-700 text-white p-4 shadow-lg z-20 flex justify-between items-center">
+        <div>
+            <h1 class="text-lg font-bold"><i class="fas fa-school mr-2"></i>Absensi Sekolah</h1>
+            <p class="text-xs text-indigo-200">Dashboard Terintegrasi</p>
         </div>
-    </aside>
+        <div id="connection-status" class="w-3 h-3 bg-red-500 rounded-full border border-white shadow animate-pulse" title="Status Koneksi"></div>
+    </header>
 
-    <main>
-        <header>
-            <div>
-                <h2 id="page-title">Absensi Live</h2>
-                <p id="clock" style="font-size: 13px; color: var(--text-muted);"></p>
+    <!-- Main Content -->
+    <main id="main-container" class="flex-1 overflow-y-auto pb-20 relative">
+
+        <!-- VIEW: HOME (Dashboard) -->
+        <section id="view-home" class="p-4 space-y-4">
+            <!-- Clock Card -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 text-center relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+                <p class="text-gray-500 text-xs font-semibold tracking-widest uppercase">Waktu Server</p>
+                <h2 id="clock" class="text-5xl font-bold text-indigo-700 my-3 font-mono">--:--</h2>
+                <p id="date" class="text-gray-400 text-sm">...</p>
             </div>
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="text-align: right;"><p style="font-size: 14px; font-weight: 600;">Admin Keamanan</p></div>
-                <div style="width: 36px; height: 36px; background: #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center;">A</div>
+
+            <!-- Stats Grid (Guru & Siswa) -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-100 flex flex-col items-center justify-center text-center">
+                    <span class="text-3xl font-bold text-blue-700" id="stat-present-guru">0</span>
+                    <span class="text-xs text-blue-600 font-semibold uppercase mt-1">Guru Hadir</span>
+                </div>
+                <div class="bg-orange-50 p-4 rounded-xl shadow-sm border border-orange-100 flex flex-col items-center justify-center text-center">
+                    <span class="text-3xl font-bold text-orange-700" id="stat-present-siswa">0</span>
+                    <span class="text-xs text-orange-600 font-semibold uppercase mt-1">Siswa Hadir</span>
+                </div>
             </div>
-        </header>
 
-        <div class="content-scroll">
-            <!-- PAGE: DASHBOARD -->
-            <section id="dashboard" class="page active">
-                <div class="grid-main">
-                    <div class="camera-wrapper" id="camera-box">
-                        <div class="liveness-overlay">
-                            <div id="liveness-badge" class="liveness-badge status-scanning">
-                                <span class="blink-indicator" id="blink-dot"></span>
-                                AI Eye-Tracking Aktif
-                            </div>
-                            <div class="liveness-badge status-scanning" id="face-count">0 Face Detected</div>
-                        </div>
+            <!-- Main Action -->
+            <button onclick="navTo('scan')" class="w-full bg-indigo-600 text-white p-4 rounded-xl shadow-lg active:scale-95 transition-transform flex items-center justify-center">
+                <div class="bg-indigo-500 p-2 rounded-full mr-3"><i class="fas fa-camera text-xl"></i></div>
+                <span class="font-bold text-lg">Mulai Mode Absensi</span>
+            </button>
 
-                        <div class="challenge-box" id="challenge-ui">
-                            <p id="challenge-text" style="font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">Inisialisasi...</p>
-                            <h3 id="challenge-instruction" style="font-size: 18px; margin-top: 4px;">Harap hadap ke depan</h3>
-                        </div>
-
-                        <video id="video" autoplay muted playsinline></video>
-                        <canvas id="canvas"></canvas>
-                    </div>
-
-                    <div class="monitor-card">
-                        <h4 style="font-size: 15px; font-weight: 700; border-bottom: 1px solid var(--border); padding-bottom: 12px;">Log Verifikasi Real-time</h4>
-                        <div id="log-stream">
-                            <p style="color: var(--text-muted); text-align: center; margin-top: 30px;">Siap memindai...</p>
-                        </div>
-                    </div>
+            <!-- Recent Activity List -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                    <h3 class="font-bold text-gray-700">Aktivitas Terbaru</h3>
+                    <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full animate-pulse">Live</span>
                 </div>
-            </section>
+                <div id="dashboard-logs" class="divide-y divide-gray-50 max-h-64 overflow-y-auto">
+                    <div class="p-8 text-center text-gray-400 text-sm">Memuat data...</div>
+                </div>
+            </div>
+        </section>
 
-            <!-- PAGE: DATABASE -->
-            <section id="database" class="page">
-                <div style="background: white; padding: 24px; border-radius: var(--radius-lg); border: 1px solid var(--border);">
-                    <h3 style="margin-bottom: 24px;">Pendaftaran Biometric Baru</h3>
-                    <div style="display: flex; gap: 32px;">
-                        <div style="width: 150px; height: 150px; background: #f1f5f9; border-radius: 20px; overflow: hidden;">
-                            <img id="reg-preview" style="width: 100%; height: 100%; object-fit: cover; display: none;">
-                            <div id="reg-placeholder" style="display:flex; height:100%; align-items:center; justify-content:center; color: #94a3b8;" onclick="document.getElementById('file-input').click()">📸</div>
+        <!-- VIEW: SCAN (AI Camera) -->
+        <section id="view-scan" class="hidden h-full flex flex-col bg-black relative">
+            <video id="video-feed" class="absolute w-full h-full object-cover" autoplay playsinline muted></video>
+            <canvas id="overlay-canvas" class="absolute top-0 left-0 w-full h-full pointer-events-none"></canvas>
+            
+            <div class="scan-box" id="scan-box"></div>
+            
+            <div class="absolute top-8 left-0 w-full text-center z-20">
+                <span id="scan-status" class="bg-black/60 text-white px-5 py-2 rounded-full text-sm backdrop-blur-md border border-white/10 shadow-lg">
+                    <i class="fas fa-search mr-2"></i>Mencari Wajah...
+                </span>
+            </div>
+
+            <!-- Result Modal -->
+            <div id="result-card" class="absolute bottom-24 left-4 right-4 bg-white rounded-2xl p-5 shadow-2xl hidden transition-all duration-300 transform translate-y-20 opacity-0 z-30 border border-gray-200">
+                <div class="flex items-center space-x-4 mb-4">
+                    <img id="result-img" src="" class="w-16 h-16 rounded-full object-cover border-2 border-indigo-500 shadow-md">
+                    <div class="flex-1 overflow-hidden">
+                        <div class="flex justify-between items-start">
+                            <h3 id="result-name" class="font-bold text-lg text-gray-800 truncate">Nama</h3>
+                            <span id="result-category" class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-gray-200 text-gray-600">User</span>
                         </div>
-                        <div style="flex: 1;">
-                            <input type="file" id="file-input" hidden onchange="previewFile(event)">
-                            <input type="text" id="reg-name" placeholder="Nama Lengkap" style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px;">
-                            <button class="btn btn-primary" onclick="registerUser()">Simpan Biometric</button>
-                        </div>
+                        <p id="result-role" class="text-sm text-gray-500 truncate">Jabatan/Kelas</p>
                     </div>
                 </div>
-            </section>
-
-            <!-- PAGE: HISTORY -->
-            <section id="history" class="page">
-                <div style="background: white; border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead style="background: #f8fafc;">
-                            <tr>
-                                <th style="padding: 16px; text-align: left; font-size: 12px; color: var(--text-muted);">Waktu</th>
-                                <th style="padding: 16px; text-align: left; font-size: 12px; color: var(--text-muted);">Nama</th>
-                                <th style="padding: 16px; text-align: left; font-size: 12px; color: var(--text-muted);">Status Liveness</th>
-                                <th style="padding: 16px; text-align: left; font-size: 12px; color: var(--text-muted);">Metode</th>
-                            </tr>
-                        </thead>
-                        <tbody id="history-body"></tbody>
-                    </table>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="logAttendance('Masuk')" class="bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-green-200">
+                        <i class="fas fa-sign-in-alt mr-1"></i> MASUK
+                    </button>
+                    <button onclick="logAttendance('Keluar')" class="bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-red-200">
+                        <i class="fas fa-sign-out-alt mr-1"></i> KELUAR
+                    </button>
                 </div>
-            </section>
-        </div>
+                <button onclick="resetScanner()" class="absolute -top-3 -right-3 bg-gray-200 text-gray-600 rounded-full w-8 h-8 flex items-center justify-center hover:bg-gray-300 shadow"><i class="fas fa-times"></i></button>
+            </div>
+        </section>
+
+        <!-- VIEW: ADMIN (Protected) -->
+        <section id="view-admin" class="hidden flex flex-col h-full bg-gray-50">
+            <!-- Admin Tabs -->
+            <div class="bg-white shadow-sm px-4 pt-4 pb-0 flex space-x-4 overflow-x-auto border-b border-gray-200">
+                <button onclick="switchAdminTab('register')" class="tab-btn active pb-3 px-2 border-b-2 border-transparent text-sm font-medium text-gray-500 whitespace-nowrap" data-tab="register">
+                    <i class="fas fa-user-plus mr-1"></i> Registrasi
+                </button>
+                <button onclick="switchAdminTab('database')" class="tab-btn pb-3 px-2 border-b-2 border-transparent text-sm font-medium text-gray-500 whitespace-nowrap" data-tab="database">
+                    <i class="fas fa-database mr-1"></i> Database
+                </button>
+                <button onclick="switchAdminTab('export')" class="tab-btn pb-3 px-2 border-b-2 border-transparent text-sm font-medium text-gray-500 whitespace-nowrap" data-tab="export">
+                    <i class="fas fa-file-export mr-1"></i> Laporan
+                </button>
+            </div>
+
+            <!-- Tab: REGISTER -->
+            <div id="tab-register" class="admin-content flex-1 overflow-y-auto p-4">
+                <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+                    <div class="relative w-full h-56 bg-gray-900 rounded-lg overflow-hidden mb-4 shadow-inner">
+                        <video id="reg-video" class="w-full h-full object-cover" autoplay playsinline muted></video>
+                        <div class="absolute bottom-3 left-0 w-full text-center">
+                            <span id="reg-status" class="bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur">Kamera Siap</span>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase ml-1">Kategori User</label>
+                            <select id="reg-category" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" onchange="updateRegPlaceholder()">
+                                <option value="Guru">Guru / Staff</option>
+                                <option value="Siswa">Siswa / Murid</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase ml-1">Nama Lengkap</label>
+                            <input type="text" id="reg-name" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="Contoh: Budi Santoso">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase ml-1" id="lbl-reg-role">Jabatan</label>
+                            <input type="text" id="reg-role" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="Contoh: Guru Matematika">
+                        </div>
+                        <button onclick="registerFace()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg font-bold shadow-md transition flex items-center justify-center">
+                            <i class="fas fa-save mr-2"></i> Simpan Data & Wajah
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: DATABASE -->
+            <div id="tab-database" class="admin-content hidden flex-1 overflow-y-auto p-4">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                        <h3 class="font-bold text-gray-700">Database Sekolah</h3>
+                        <span id="total-users-badge" class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">0 User</span>
+                    </div>
+                    
+                    <!-- NEW: Filter Buttons for easier management -->
+                    <div class="flex p-2 bg-white border-b border-gray-100 space-x-2">
+                        <button onclick="filterDatabase('All')" id="btn-filter-all" class="filter-btn active flex-1 py-2 text-xs font-bold rounded border border-gray-200 text-gray-600 transition">Semua</button>
+                        <button onclick="filterDatabase('Guru')" id="btn-filter-guru" class="filter-btn flex-1 py-2 text-xs font-bold rounded border border-gray-200 text-gray-500 hover:text-blue-600 transition">Guru</button>
+                        <button onclick="filterDatabase('Siswa')" id="btn-filter-siswa" class="filter-btn flex-1 py-2 text-xs font-bold rounded border border-gray-200 text-gray-500 hover:text-orange-600 transition">Siswa</button>
+                    </div>
+
+                    <ul id="user-list" class="divide-y divide-gray-100">
+                        <li class="p-8 text-center text-gray-400 text-sm">Memuat data...</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Tab: EXPORT -->
+            <div id="tab-export" class="admin-content hidden flex-1 overflow-y-auto p-4">
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 text-center space-y-4">
+                    <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                        <i class="fas fa-file-excel text-3xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-gray-800">Export Laporan Absensi</h3>
+                        <p class="text-sm text-gray-500">Unduh data Guru & Siswa dalam format Excel (CSV).</p>
+                    </div>
+                    <div class="py-4">
+                        <div class="flex justify-between text-sm text-gray-600 bg-gray-50 p-3 rounded mb-2">
+                            <span>Total Log Tersimpan:</span>
+                            <span class="font-bold" id="total-logs-count">...</span>
+                        </div>
+                    </div>
+                    <button onclick="exportToCSV()" class="w-full bg-green-600 hover:bg-green-700 text-white p-3 rounded-lg font-bold shadow-lg shadow-green-200 transition">
+                        <i class="fas fa-download mr-2"></i> Download Laporan (.csv)
+                    </button>
+                    <hr class="border-gray-100 my-4">
+                    <button onclick="clearAllAttendance()" class="text-xs text-red-500 hover:text-red-700 underline">
+                        Hapus Seluruh Riwayat Absensi (Reset)
+                    </button>
+                </div>
+            </div>
+        </section>
     </main>
 
+    <!-- Navigation -->
+    <nav class="bg-white border-t border-gray-200 fixed bottom-0 w-full z-40 h-16 flex justify-around items-center text-gray-400 shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
+        <button onclick="navTo('home')" class="nav-item active text-indigo-600 flex flex-col items-center w-full transition" data-target="home">
+            <i class="fas fa-home text-xl mb-1"></i><span class="text-[10px] font-medium">Beranda</span>
+        </button>
+        <button onclick="navTo('scan')" class="nav-item flex flex-col items-center w-full transition" data-target="scan">
+            <div class="bg-indigo-600 text-white rounded-full w-12 h-12 flex items-center justify-center -mt-6 shadow-lg shadow-indigo-300 border-4 border-white">
+                <i class="fas fa-expand text-xl"></i>
+            </div>
+            <span class="text-[10px] font-medium mt-1">Absen</span>
+        </button>
+        <button onclick="authAdmin()" class="nav-item flex flex-col items-center w-full transition" data-target="admin">
+            <i class="fas fa-user-shield text-xl mb-1"></i><span class="text-[10px] font-medium">Admin</span>
+        </button>
+    </nav>
+
+    <!-- FIREBASE & LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, onSnapshot, query, orderBy, limit, Timestamp, doc, deleteDoc, updateDoc } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyABBrnNteB9H0sXEo1kfrPirSMcUjbfbsA",
+            authDomain: "absensifacerecog.firebaseapp.com",
+            projectId: "absensifacerecog",
+            storageBucket: "absensifacerecog.firebasestorage.app",
+            messagingSenderId: "396600041608",
+            appId: "1:396600041608:web:6db4157425783c12023f3d"
+        };
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            window.db = db;
+            window.collection = collection;
+            window.addDoc = addDoc;
+            window.getDocs = getDocs;
+            window.onSnapshot = onSnapshot;
+            window.query = query;
+            window.orderBy = orderBy;
+            window.limit = limit;
+            window.Timestamp = Timestamp;
+            window.doc = doc;
+            window.deleteDoc = deleteDoc;
+            window.updateDoc = updateDoc;
+            
+            console.log("Firebase Connected");
+            document.getElementById('connection-status').classList.replace('bg-red-500', 'bg-green-500');
+        } catch(e) {
+            console.error("Firebase Init Error:", e);
+            Swal.fire("Error", "Gagal koneksi database. Cek internet.", "error");
+        }
+    </script>
+
     <script>
-        // --- KONFIGURASI LIVENESS ---
-        let personnel = JSON.parse(localStorage.getItem('bioguard_users')) || [];
-        let logs = JSON.parse(localStorage.getItem('bioguard_logs')) || [];
         let faceMatcher = null;
-        let isProcessing = false;
+        let labeledDescriptors = [];
+        let currentStream = null;
+        let detectedUser = null;
+        let isScannerRunning = false;
+        let allLogs = [];
+        let allUsersData = []; // Store users for filtering
+        let currentFilter = 'All';
 
-        // Threshold Kedipan (Eye Aspect Ratio / EAR)
-        const BLINK_THRESHOLD = 0.22;
-        let blinkCounter = 0;
-        let hasBlinked = false;
-        let livenessScore = 0;
-
-        async function init() {
-            updateClock();
-            setInterval(updateClock, 1000);
-
+        window.onload = async () => {
+            updateTime();
+            setInterval(updateTime, 1000);
+            
             try {
-                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
                 await Promise.all([
-                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                    faceapi.nets.tinyFaceDetector.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models'),
+                    faceapi.nets.faceLandmark68Net.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models'),
+                    faceapi.nets.faceRecognitionNet.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models'),
+                    faceapi.nets.ssdMobilenetv1.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models')
                 ]);
 
-                updateMatcher();
-                document.getElementById('system-loader').style.display = 'none';
-                startCamera();
+                const loader = document.getElementById('loading-screen');
+                loader.classList.add('opacity-0');
+                setTimeout(() => loader.classList.add('hidden'), 500);
+
+                if(window.db) {
+                    initUserListener();
+                    initLogListener();
+                } else {
+                    setTimeout(() => { if(window.db) { initUserListener(); initLogListener(); } }, 2000);
+                }
+
             } catch (err) {
-                alert("Gagal memuat AI Engine.");
+                console.error(err);
+                Swal.fire("Error AI", "Gagal memuat model wajah.", "error");
             }
-        }
+        };
 
-        function updateClock() {
-            document.getElementById('clock').innerText = new Date().toLocaleString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        }
+        // --- FIREBASE LISTENERS ---
+        function initUserListener() {
+            const q = window.query(window.collection(window.db, "users"), window.orderBy("name"));
+            window.onSnapshot(q, (snapshot) => {
+                labeledDescriptors = [];
+                allUsersData = []; // Reset local storage
+                let count = 0;
 
-        async function startCamera() {
-            const video = document.getElementById('video');
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
-                video.srcObject = stream;
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    const docId = docSnap.id;
+                    const category = data.category || 'Guru';
+                    
+                    allUsersData.push({ id: docId, ...data, category });
+
+                    if(data.descriptor) {
+                        const descriptor = new Float32Array(data.descriptor);
+                        const label = new faceapi.LabeledFaceDescriptors(`${data.name}|${data.role}|${category}`, [descriptor]);
+                        labeledDescriptors.push(label);
+                    }
+                    count++;
+                });
+
+                document.getElementById('total-users-badge').innerText = `${count} User`;
                 
-                video.onplay = () => {
-                    const canvas = document.getElementById('canvas');
-                    const displaySize = { width: video.clientWidth, height: video.clientHeight };
+                // Update UI based on current filter
+                renderUserList();
+
+                if (labeledDescriptors.length > 0) {
+                    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
+                }
+            });
+        }
+
+        // --- DATABASE UI LOGIC ---
+        function filterDatabase(type) {
+            currentFilter = type;
+            
+            // Update buttons style
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-indigo-600', 'text-white');
+                btn.classList.add('text-gray-500', 'bg-white');
+            });
+
+            // Set active button
+            const activeBtnId = `btn-filter-${type.toLowerCase()}`;
+            const activeBtn = document.getElementById(activeBtnId);
+            if(activeBtn) {
+                activeBtn.classList.remove('bg-white', 'text-gray-500');
+                activeBtn.classList.add('active', 'bg-indigo-600', 'text-white');
+            }
+
+            renderUserList();
+        }
+
+        function renderUserList() {
+            const listEl = document.getElementById('user-list');
+            listEl.innerHTML = "";
+            
+            const filteredData = currentFilter === 'All' 
+                ? allUsersData 
+                : allUsersData.filter(u => u.category === currentFilter);
+
+            if(filteredData.length === 0) {
+                listEl.innerHTML = `<li class="p-8 text-center text-sm text-gray-400">Tidak ada data ${currentFilter !== 'All' ? currentFilter : ''}.</li>`;
+                return;
+            }
+
+            filteredData.forEach(data => {
+                const badgeColor = data.category === 'Siswa' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700';
+                const iconColor = data.category === 'Siswa' ? 'bg-orange-100 text-orange-600' : 'bg-indigo-100 text-indigo-600';
+
+                const li = document.createElement('li');
+                li.className = "p-4 flex justify-between items-center hover:bg-gray-50 transition";
+                li.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 ${iconColor} rounded-full flex items-center justify-center font-bold text-sm">
+                            ${data.name.charAt(0)}
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <p class="text-sm font-bold text-gray-800">${data.name}</p>
+                                <span class="text-[9px] px-1.5 py-0.5 rounded font-bold ${badgeColor}">${data.category}</span>
+                            </div>
+                            <p class="text-xs text-gray-500">${data.role}</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="editUser('${data.id}', '${data.name}', '${data.role}')" class="text-blue-500 hover:bg-blue-50 p-2 rounded"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteUser('${data.id}', '${data.name}')" class="text-red-500 hover:bg-red-50 p-2 rounded"><i class="fas fa-trash"></i></button>
+                    </div>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+
+        function initLogListener() {
+            const q = window.query(window.collection(window.db, "attendance"), window.orderBy("timestamp", "desc"));
+            window.onSnapshot(q, (snapshot) => {
+                allLogs = [];
+                const dashboardList = document.getElementById('dashboard-logs');
+                dashboardList.innerHTML = "";
+                
+                let guruCount = 0;
+                let siswaCount = 0;
+                const todayStr = new Date().toDateString();
+
+                if(snapshot.empty) {
+                    dashboardList.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">Belum ada aktivitas.</div>';
+                    document.getElementById('total-logs-count').innerText = "0";
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    allLogs.push(data);
+
+                    const dateObj = data.timestamp ? new Date(data.timestamp.seconds * 1000) : new Date();
+                    const category = data.category || 'Guru'; 
+
+                    // Count Stats
+                    if(dateObj.toDateString() === todayStr && data.type === 'Masuk') {
+                        if(category === 'Siswa') siswaCount++;
+                        else guruCount++;
+                    }
+
+                    if(dashboardList.children.length < 10) {
+                        const timeStr = dateObj.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+                        const statusColor = data.type === 'Masuk' ? 'text-green-600 bg-green-50' : 'text-red-500 bg-red-50';
+                        const badgeColor = category === 'Siswa' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600';
+                        
+                        const item = `
+                            <div class="p-4 flex justify-between items-center">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-8 h-8 rounded-full ${badgeColor} flex items-center justify-center text-xs font-bold">
+                                        ${data.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-bold text-gray-800">${data.name}</p>
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-[9px] px-1 py-0 rounded bg-gray-100 text-gray-500">${category}</span>
+                                            <p class="text-[10px] text-gray-400">${dateObj.toLocaleDateString('id-ID')}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="px-2 py-1 rounded text-[10px] font-bold ${statusColor}">${data.type.toUpperCase()}</span>
+                                    <p class="text-xs text-gray-500 mt-1">${timeStr}</p>
+                                </div>
+                            </div>
+                        `;
+                        dashboardList.innerHTML += item;
+                    }
+                });
+
+                document.getElementById('stat-present-guru').innerText = guruCount;
+                document.getElementById('stat-present-siswa').innerText = siswaCount;
+                document.getElementById('total-logs-count').innerText = allLogs.length;
+            });
+        }
+
+        // --- SCANNER ---
+        async function startScanner() {
+            if(isScannerRunning) return;
+            const video = document.getElementById('video-feed');
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                video.srcObject = stream;
+                currentStream = stream;
+                isScannerRunning = true;
+
+                video.onloadedmetadata = () => {
+                    video.play();
+                    const canvas = document.getElementById('overlay-canvas');
+                    const displaySize = { width: video.videoWidth, height: video.videoHeight };
                     faceapi.matchDimensions(canvas, displaySize);
 
-                    setInterval(async () => {
-                        if (isProcessing) return;
+                    const interval = setInterval(async () => {
+                        if (!currentStream || video.paused || video.ended) { clearInterval(interval); return; }
 
-                        const detections = await faceapi.detectAllFaces(video).withFaceLandmarks().withFaceDescriptors();
-                        const resized = faceapi.resizeResults(detections, displaySize);
+                        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptors();
                         
-                        document.getElementById('face-count').innerText = `${detections.length} Face Detected`;
+                        if(detections.length > 0 && faceMatcher) {
+                            const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                            const bestMatch = faceMatcher.findBestMatch(resizedDetections[0].descriptor);
+                            const scanBox = document.getElementById('scan-box');
 
-                        const ctx = canvas.getContext('2d');
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                        if (resized.length > 0) {
-                            const det = resized[0];
-                            const landmarks = det.landmarks;
-                            
-                            // 1. BLINK DETECTION (Anti-Foto)
-                            checkLiveness(landmarks);
-
-                            // 2. FACE MATCHING
-                            if (personnel.length > 0 && faceMatcher) {
-                                const match = faceMatcher.findBestMatch(det.descriptor);
-                                
-                                // Box styling
-                                ctx.strokeStyle = match.label === 'unknown' ? '#ef4444' : (hasBlinked ? '#10b981' : '#3b82f6');
-                                ctx.lineWidth = 4;
-                                ctx.strokeRect(det.detection.box.x, det.detection.box.y, det.detection.box.width, det.detection.box.height);
-
-                                if (match.label !== 'unknown' && match.distance < 0.45) {
-                                    handleChallenge(match.label);
-                                } else {
-                                    resetChallenge("Mencari data personil...");
-                                }
+                            if(bestMatch.label !== 'unknown') {
+                                scanBox.classList.add('active');
+                                // Parse: Name|Role|Category
+                                const parts = bestMatch.label.split('|');
+                                handleMatchFound(parts[0], parts[1] || '-', parts[2] || 'Guru');
                             } else {
-                                resetChallenge("Database Kosong");
+                                scanBox.classList.remove('active');
                             }
-                        } else {
-                            resetChallenge("Harap hadap ke kamera");
-                            hasBlinked = false;
-                            blinkCounter = 0;
-                            document.getElementById('blink-dot').classList.remove('blink-active');
                         }
-                    }, 100);
+                    }, 500);
                 };
-            } catch (e) {
-                alert("Kamera tidak aktif.");
+            } catch (err) {
+                console.error(err);
+                Swal.fire("Kamera Error", "Izinkan akses kamera di browser.", "error");
+                navTo('home');
             }
         }
 
-        // Hitung Eye Aspect Ratio (EAR) untuk deteksi kedipan
-        function checkLiveness(landmarks) {
-            const leftEye = landmarks.getLeftEye();
-            const rightEye = landmarks.getRightEye();
-
-            const earL = getEAR(leftEye);
-            const earR = getEAR(rightEye);
-            const avgEAR = (earL + earR) / 2;
-
-            if (avgEAR < BLINK_THRESHOLD) {
-                blinkCounter++;
-                document.getElementById('blink-dot').classList.add('blink-active');
-            } else {
-                if (blinkCounter >= 2) { // Minimal tertutup selama 2 frame
-                    hasBlinked = true;
-                    pushLog("Kedipan terdeteksi (Liveness Valid)");
-                }
-                blinkCounter = 0;
-                document.getElementById('blink-dot').classList.remove('blink-active');
-            }
-        }
-
-        function getEAR(eye) {
-            const p2p6 = Math.sqrt(Math.pow(eye[1].x - eye[5].x, 2) + Math.pow(eye[1].y - eye[5].y, 2));
-            const p3p5 = Math.sqrt(Math.pow(eye[2].x - eye[4].x, 2) + Math.pow(eye[2].y - eye[4].y, 2));
-            const p1p4 = Math.sqrt(Math.pow(eye[0].x - eye[3].x, 2) + Math.pow(eye[0].y - eye[3].y, 2));
-            return (p2p6 + p3p5) / (2.0 * p1p4);
-        }
-
-        function handleChallenge(name) {
-            const text = document.getElementById('challenge-text');
-            const inst = document.getElementById('challenge-instruction');
-
-            if (!hasBlinked) {
-                text.innerText = `Halo, ${name.split(' ')[0]}`;
-                inst.innerText = "Silahkan berkedip sekali";
-                inst.style.color = "white";
-            } else {
-                inst.innerText = "Liveness OK. Berhasil!";
-                inst.style.color = "#10b981";
-                processAttendance(name);
-            }
-        }
-
-        function resetChallenge(msg) {
-            document.getElementById('challenge-text').innerText = "Security Scanning";
-            document.getElementById('challenge-instruction').innerText = msg;
-            document.getElementById('challenge-instruction').style.color = "white";
-        }
-
-        async function processAttendance(name) {
-            if (isProcessing) return;
+        function handleMatchFound(name, role, category) {
+            if(detectedUser) return;
             
-            // Cek cooldown (anti double log)
-            const lastLog = logs.find(l => l.name === name);
-            if (lastLog) {
-                const diff = (new Date() - new Date(lastLog.fullDate)) / 1000 / 60;
-                if (diff < 1) return;
-            }
-
-            isProcessing = true;
-            const now = new Date();
-            const logEntry = {
-                name: name,
-                time: now.toLocaleTimeString('id-ID'),
-                date: now.toLocaleDateString('id-ID'),
-                status: 'PASSED',
-                method: 'Blink Detection',
-                fullDate: now.toISOString()
-            };
-
-            logs.unshift(logEntry);
-            localStorage.setItem('bioguard_logs', JSON.stringify(logs));
+            detectedUser = { name, role, category };
+            document.getElementById('result-name').innerText = name;
+            document.getElementById('result-role').innerText = role;
+            document.getElementById('result-category').innerText = category;
             
-            pushLog(`✅ Absensi Berhasil: ${name}`);
-            renderHistory();
-            
-            // Animasi transisi setelah sukses
-            setTimeout(() => {
-                hasBlinked = false;
-                isProcessing = false;
-            }, 3000);
+            const img = document.getElementById('result-img');
+            img.src = `https://ui-avatars.com/api/?name=${name}&background=random`;
+            img.className = `w-16 h-16 rounded-full object-cover border-4 shadow-md ${category === 'Siswa' ? 'border-orange-400' : 'border-blue-500'}`;
+
+            const card = document.getElementById('result-card');
+            card.classList.remove('hidden');
+            requestAnimationFrame(() => { card.classList.remove('translate-y-20', 'opacity-0'); });
+
+            document.getElementById('scan-status').innerHTML = `<i class="fas fa-check-circle mr-1"></i> ${category} Dikenali!`;
+            document.getElementById('scan-status').className = `text-white px-5 py-2 rounded-full text-sm shadow-lg font-bold ${category === 'Siswa' ? 'bg-orange-600' : 'bg-blue-600'}`;
         }
 
-        // --- UI & DATABASE ---
-        function updateMatcher() {
-            if (personnel.length === 0) return;
-            const labeled = personnel.map(u => new faceapi.LabeledFaceDescriptors(u.name, [new Float32Array(u.descriptor)]));
-            faceMatcher = new faceapi.FaceMatcher(labeled, 0.45);
-        }
-
-        function previewFile(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const img = document.getElementById('reg-preview');
-                    img.src = ev.target.result;
-                    img.style.display = 'block';
-                    document.getElementById('reg-placeholder').style.display = 'none';
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        async function registerUser() {
-            const name = document.getElementById('reg-name').value;
-            const img = document.getElementById('reg-preview');
-            if (!name || !img.src) return alert("Data tidak lengkap");
-
+        async function logAttendance(type) {
+            if(!detectedUser) return;
             try {
-                const det = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
-                if (det) {
-                    personnel.push({
-                        name: name,
-                        descriptor: Array.from(det.descriptor),
-                        id: Date.now()
-                    });
-                    localStorage.setItem('bioguard_users', JSON.stringify(personnel));
-                    alert("Registrasi Berhasil");
-                    updateMatcher();
-                } else {
-                    alert("Wajah tidak terdeteksi pada foto.");
+                await window.addDoc(window.collection(window.db, "attendance"), {
+                    name: detectedUser.name,
+                    role: detectedUser.role,
+                    category: detectedUser.category,
+                    type: type,
+                    timestamp: window.Timestamp.now(),
+                    device: navigator.userAgent
+                });
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: `Absen ${type}`,
+                    text: `${detectedUser.category}: ${detectedUser.name}`,
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+
+                resetScanner();
+                navTo('home');
+
+            } catch(e) {
+                Swal.fire("Error", e.message, "error");
+            }
+        }
+
+        function resetScanner() {
+            detectedUser = null;
+            const card = document.getElementById('result-card');
+            card.classList.add('translate-y-20', 'opacity-0');
+            setTimeout(() => card.classList.add('hidden'), 300);
+            document.getElementById('scan-box').classList.remove('active');
+            document.getElementById('scan-status').innerHTML = `<i class="fas fa-search mr-2"></i>Mencari Wajah...`;
+            document.getElementById('scan-status').className = "bg-black/60 text-white px-5 py-2 rounded-full text-sm backdrop-blur-md border border-white/10 shadow-lg";
+        }
+
+        // --- ADMIN ---
+        function authAdmin() {
+            Swal.fire({
+                title: 'Masuk Admin',
+                input: 'password',
+                inputPlaceholder: 'PIN (Default: 1234)',
+                inputAttributes: { maxlength: 4, autocapitalize: 'off', autocorrect: 'off' },
+                showCancelButton: true,
+                confirmButtonText: 'Masuk',
+                confirmButtonColor: '#4f46e5'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    if(result.value === '1234') navTo('admin');
+                    else Swal.fire('Akses Ditolak', 'PIN Salah!', 'error');
                 }
-            } catch (e) { alert("Error sistem."); }
+            });
         }
 
-        function pushLog(msg) {
-            const stream = document.getElementById('log-stream');
-            if (stream.innerHTML.includes("Siap memindai")) stream.innerHTML = "";
-            const item = document.createElement('div');
-            item.className = 'log-item';
-            item.innerHTML = `<span>${msg}</span> <span style="color:var(--text-muted)">${new Date().toLocaleTimeString()}</span>`;
-            stream.prepend(item);
+        function updateRegPlaceholder() {
+            const cat = document.getElementById('reg-category').value;
+            const roleLabel = document.getElementById('lbl-reg-role');
+            const roleInput = document.getElementById('reg-role');
+            
+            if(cat === 'Siswa') {
+                roleLabel.innerText = "Kelas";
+                roleInput.placeholder = "Contoh: XII IPA 1";
+            } else {
+                roleLabel.innerText = "Jabatan / Mapel";
+                roleInput.placeholder = "Contoh: Guru Matematika";
+            }
         }
 
-        function navigate(id, btn) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            btn.classList.add('active');
-            if (id === 'history') renderHistory();
+        async function startRegCamera() {
+            const video = document.getElementById('reg-video');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                video.srcObject = stream;
+            } catch(e) { console.error(e); }
         }
 
-        function renderHistory() {
-            const body = document.getElementById('history-body');
-            body.innerHTML = logs.map(l => `
-                <tr>
-                    <td style="padding:16px;">${l.time}</td>
-                    <td style="padding:16px; font-weight:600;">${l.name}</td>
-                    <td style="padding:16px;"><span style="color:var(--success); font-weight:700;">${l.status}</span></td>
-                    <td style="padding:16px; color:var(--text-muted); font-size:12px;">${l.method}</td>
-                </tr>
-            `).join('');
+        async function registerFace() {
+            const cat = document.getElementById('reg-category').value;
+            const name = document.getElementById('reg-name').value;
+            const role = document.getElementById('reg-role').value;
+            const video = document.getElementById('reg-video');
+            
+            if(!name || !role) return Swal.fire("Lengkapi Data", "Nama dan Jabatan/Kelas wajib diisi.", "warning");
+            
+            Swal.fire({ title: 'Memproses...', text: 'Tahan posisi wajah...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            const detection = await faceapi.detectSingleFace(video, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks().withFaceDescriptor();
+
+            if(detection) {
+                const descriptorArray = Array.from(detection.descriptor);
+                try {
+                    await window.addDoc(window.collection(window.db, "users"), {
+                        category: cat,
+                        name: name,
+                        role: role,
+                        descriptor: descriptorArray,
+                        createdAt: window.Timestamp.now()
+                    });
+                    
+                    Swal.fire("Berhasil", `Data ${cat} ${name} tersimpan!`, "success");
+                    document.getElementById('reg-name').value = "";
+                    document.getElementById('reg-role').value = "";
+                } catch(e) {
+                    Swal.fire("Gagal", e.message, "error");
+                }
+            } else {
+                Swal.fire("Wajah Tidak Terdeteksi", "Pastikan pencahayaan cukup.", "warning");
+            }
         }
 
-        window.onload = init;
+        async function editUser(docId, oldName, oldRole) {
+            const { value: formValues } = await Swal.fire({
+                title: 'Edit Data',
+                html:
+                    `<input id="swal-input1" class="swal2-input" placeholder="Nama" value="${oldName}">` +
+                    `<input id="swal-input2" class="swal2-input" placeholder="Jabatan/Kelas" value="${oldRole}">`,
+                focusConfirm: false,
+                showCancelButton: true,
+                preConfirm: () => {
+                    return [
+                        document.getElementById('swal-input1').value,
+                        document.getElementById('swal-input2').value
+                    ]
+                }
+            });
+
+            if (formValues) {
+                try {
+                    await window.updateDoc(window.doc(window.db, "users", docId), {
+                        name: formValues[0],
+                        role: formValues[1]
+                    });
+                    Swal.fire('Update Berhasil', '', 'success');
+                } catch(e) { Swal.fire('Error', e.message, 'error'); }
+            }
+        }
+
+        async function deleteUser(docId, name) {
+            Swal.fire({
+                title: `Hapus ${name}?`,
+                text: "Data akan hilang permanen!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Ya, Hapus'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        await window.deleteDoc(window.doc(window.db, "users", docId));
+                        Swal.fire('Terhapus!', 'Data telah dihapus.', 'success');
+                    } catch(e) { Swal.fire('Error', e.message, 'error'); }
+                }
+            });
+        }
+
+        function exportToCSV() {
+            if(allLogs.length === 0) return Swal.fire("Data Kosong", "Belum ada riwayat absensi.", "info");
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Tanggal,Jam,Kategori,Nama,Jabatan/Kelas,Status,Device\n";
+
+            allLogs.forEach(log => {
+                const dateObj = log.timestamp ? new Date(log.timestamp.seconds * 1000) : new Date();
+                const category = log.category || 'Guru';
+                const row = `${dateObj.toLocaleDateString('id-ID')},${dateObj.toLocaleTimeString('id-ID')},"${category}","${log.name}","${log.role}",${log.type},"${log.device || '-'}"`;
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Absensi_Sekolah_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        async function clearAllAttendance() {
+            Swal.fire({
+                title: 'Reset Absensi?',
+                text: "Semua riwayat akan dihapus! Data user AMAN.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'RESET SEMUA'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({title: 'Menghapus...', didOpen: () => Swal.showLoading()});
+                    const q = window.query(window.collection(window.db, "attendance"));
+                    const snapshot = await window.getDocs(q);
+                    const deletePromises = [];
+                    snapshot.forEach(doc => { deletePromises.push(window.deleteDoc(doc.ref)); });
+                    await Promise.all(deletePromises);
+                    Swal.fire('Selesai', 'Riwayat absensi bersih.', 'success');
+                }
+            });
+        }
+
+        function navTo(target) {
+            if(target === 'scan' && !isScannerRunning) startScanner();
+            if(target !== 'scan' && isScannerRunning) {
+                isScannerRunning = false;
+                if(currentStream) currentStream.getTracks().forEach(t => t.stop());
+            }
+
+            document.querySelectorAll('section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${target}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('text-indigo-600', 'active'));
+            document.querySelector(`.nav-item[data-target="${target}"]`).classList.add('text-indigo-600', 'active');
+
+            if(target === 'admin') switchAdminTab('register');
+        }
+
+        function switchAdminTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('active', 'border-indigo-600', 'text-indigo-600');
+                if(el.dataset.tab === tabName) el.classList.add('active', 'border-indigo-600', 'text-indigo-600');
+            });
+            document.querySelectorAll('.admin-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+            if(tabName === 'register') startRegCamera();
+            else {
+                const v = document.getElementById('reg-video');
+                if(v.srcObject) v.srcObject.getTracks().forEach(t => t.stop());
+            }
+        }
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
+            document.getElementById('date').innerText = now.toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+        }
     </script>
 </body>
 </html>
+
 

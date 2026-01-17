@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistem Absensi Sekolah Pro (Guru & Siswa)</title>
+    <title>Sistem Absensi Sekolah Pro</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
@@ -12,13 +12,17 @@
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <!-- SweetAlert2 -->
+    <!-- SweetAlert2 (Untuk Popup Edit/Hapus yang Cantik) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
+        
+        /* Loader Animation */
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4f46e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Scan UI */
         .scan-box {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 250px; height: 250px; border: 2px solid rgba(255,255,255,0.5); border-radius: 12px;
@@ -26,10 +30,9 @@
             transition: border-color 0.3s, box-shadow 0.3s;
         }
         .scan-box.active { border-color: #22c55e; box-shadow: 0 0 0 9999px rgba(0,0,0,0.85), inset 0 0 30px rgba(34,197,94,0.3); }
+
+        /* Admin Tab Button Style */
         .tab-btn.active { background-color: #4f46e5; color: white; border-color: #4f46e5; }
-        
-        /* Filter Button Active State */
-        .filter-btn.active { background-color: #4f46e5; color: white; border-color: #4f46e5; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-gray-800">
@@ -45,7 +48,7 @@
     <header class="bg-indigo-700 text-white p-4 shadow-lg z-20 flex justify-between items-center">
         <div>
             <h1 class="text-lg font-bold"><i class="fas fa-school mr-2"></i>Absensi Sekolah</h1>
-            <p class="text-xs text-indigo-200">Dashboard Terintegrasi</p>
+            <p class="text-xs text-indigo-200">Admin Dashboard & AI Scanner</p>
         </div>
         <div id="connection-status" class="w-3 h-3 bg-red-500 rounded-full border border-white shadow animate-pulse" title="Status Koneksi"></div>
     </header>
@@ -63,23 +66,17 @@
                 <p id="date" class="text-gray-400 text-sm">...</p>
             </div>
 
-            <!-- Stats Grid (Guru & Siswa) -->
+            <!-- Quick Actions -->
             <div class="grid grid-cols-2 gap-3">
-                <div class="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-100 flex flex-col items-center justify-center text-center">
-                    <span class="text-3xl font-bold text-blue-700" id="stat-present-guru">0</span>
-                    <span class="text-xs text-blue-600 font-semibold uppercase mt-1">Guru Hadir</span>
-                </div>
-                <div class="bg-orange-50 p-4 rounded-xl shadow-sm border border-orange-100 flex flex-col items-center justify-center text-center">
-                    <span class="text-3xl font-bold text-orange-700" id="stat-present-siswa">0</span>
-                    <span class="text-xs text-orange-600 font-semibold uppercase mt-1">Siswa Hadir</span>
+                <button onclick="navTo('scan')" class="bg-indigo-600 text-white p-5 rounded-xl shadow-lg active:scale-95 transition-transform flex flex-col items-center justify-center">
+                    <div class="bg-indigo-500 p-3 rounded-full mb-2"><i class="fas fa-camera text-2xl"></i></div>
+                    <span class="font-bold">Mulai Absen</span>
+                </button>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+                    <span class="text-3xl font-bold text-gray-800" id="stat-present">0</span>
+                    <span class="text-xs text-gray-500">Guru Hadir Hari Ini</span>
                 </div>
             </div>
-
-            <!-- Main Action -->
-            <button onclick="navTo('scan')" class="w-full bg-indigo-600 text-white p-4 rounded-xl shadow-lg active:scale-95 transition-transform flex items-center justify-center">
-                <div class="bg-indigo-500 p-2 rounded-full mr-3"><i class="fas fa-camera text-xl"></i></div>
-                <span class="font-bold text-lg">Mulai Mode Absensi</span>
-            </button>
 
             <!-- Recent Activity List -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -98,24 +95,23 @@
             <video id="video-feed" class="absolute w-full h-full object-cover" autoplay playsinline muted></video>
             <canvas id="overlay-canvas" class="absolute top-0 left-0 w-full h-full pointer-events-none"></canvas>
             
+            <!-- Target Box -->
             <div class="scan-box" id="scan-box"></div>
             
+            <!-- Status Text -->
             <div class="absolute top-8 left-0 w-full text-center z-20">
                 <span id="scan-status" class="bg-black/60 text-white px-5 py-2 rounded-full text-sm backdrop-blur-md border border-white/10 shadow-lg">
                     <i class="fas fa-search mr-2"></i>Mencari Wajah...
                 </span>
             </div>
 
-            <!-- Result Modal -->
+            <!-- Result Modal (Hidden by default) -->
             <div id="result-card" class="absolute bottom-24 left-4 right-4 bg-white rounded-2xl p-5 shadow-2xl hidden transition-all duration-300 transform translate-y-20 opacity-0 z-30 border border-gray-200">
                 <div class="flex items-center space-x-4 mb-4">
                     <img id="result-img" src="" class="w-16 h-16 rounded-full object-cover border-2 border-indigo-500 shadow-md">
                     <div class="flex-1 overflow-hidden">
-                        <div class="flex justify-between items-start">
-                            <h3 id="result-name" class="font-bold text-lg text-gray-800 truncate">Nama</h3>
-                            <span id="result-category" class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-gray-200 text-gray-600">User</span>
-                        </div>
-                        <p id="result-role" class="text-sm text-gray-500 truncate">Jabatan/Kelas</p>
+                        <h3 id="result-name" class="font-bold text-lg text-gray-800 truncate">Nama Guru</h3>
+                        <p id="result-role" class="text-sm text-gray-500 truncate">Jabatan</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
@@ -132,23 +128,23 @@
 
         <!-- VIEW: ADMIN (Protected) -->
         <section id="view-admin" class="hidden flex flex-col h-full bg-gray-50">
-            <!-- Admin Tabs -->
+            <!-- Admin Navigation Tabs -->
             <div class="bg-white shadow-sm px-4 pt-4 pb-0 flex space-x-4 overflow-x-auto border-b border-gray-200">
                 <button onclick="switchAdminTab('register')" class="tab-btn active pb-3 px-2 border-b-2 border-transparent text-sm font-medium text-gray-500 whitespace-nowrap" data-tab="register">
                     <i class="fas fa-user-plus mr-1"></i> Registrasi
                 </button>
                 <button onclick="switchAdminTab('database')" class="tab-btn pb-3 px-2 border-b-2 border-transparent text-sm font-medium text-gray-500 whitespace-nowrap" data-tab="database">
-                    <i class="fas fa-database mr-1"></i> Database
+                    <i class="fas fa-database mr-1"></i> Data Guru
                 </button>
                 <button onclick="switchAdminTab('export')" class="tab-btn pb-3 px-2 border-b-2 border-transparent text-sm font-medium text-gray-500 whitespace-nowrap" data-tab="export">
                     <i class="fas fa-file-export mr-1"></i> Laporan
                 </button>
             </div>
 
-            <!-- Tab: REGISTER -->
+            <!-- Tab Content: REGISTER -->
             <div id="tab-register" class="admin-content flex-1 overflow-y-auto p-4">
                 <div class="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
-                    <div class="relative w-full h-56 bg-gray-900 rounded-lg overflow-hidden mb-4 shadow-inner">
+                    <div class="relative w-full h-64 bg-gray-900 rounded-lg overflow-hidden mb-4 shadow-inner">
                         <video id="reg-video" class="w-full h-full object-cover" autoplay playsinline muted></video>
                         <div class="absolute bottom-3 left-0 w-full text-center">
                             <span id="reg-status" class="bg-black/60 text-white text-xs px-3 py-1 rounded-full backdrop-blur">Kamera Siap</span>
@@ -156,57 +152,46 @@
                     </div>
                     <div class="space-y-3">
                         <div>
-                            <label class="text-xs font-bold text-gray-500 uppercase ml-1">Kategori User</label>
-                            <select id="reg-category" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" onchange="updateRegPlaceholder()">
-                                <option value="Guru">Guru / Staff</option>
-                                <option value="Siswa">Siswa / Murid</option>
-                            </select>
-                        </div>
-                        <div>
                             <label class="text-xs font-bold text-gray-500 uppercase ml-1">Nama Lengkap</label>
-                            <input type="text" id="reg-name" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="Contoh: Budi Santoso">
+                            <input type="text" id="reg-name" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition" placeholder="Contoh: Budi Santoso, S.Pd">
                         </div>
                         <div>
-                            <label class="text-xs font-bold text-gray-500 uppercase ml-1" id="lbl-reg-role">Jabatan</label>
-                            <input type="text" id="reg-role" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="Contoh: Guru Matematika">
+                            <label class="text-xs font-bold text-gray-500 uppercase ml-1">Jabatan / Mapel</label>
+                            <input type="text" id="reg-role" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none transition" placeholder="Contoh: Guru Matematika">
                         </div>
                         <button onclick="registerFace()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg font-bold shadow-md transition flex items-center justify-center">
                             <i class="fas fa-save mr-2"></i> Simpan Data & Wajah
                         </button>
                     </div>
                 </div>
+                <div class="mt-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-700 border border-blue-100">
+                    <i class="fas fa-info-circle mr-1"></i> <strong>Tips:</strong> Pastikan wajah guru terlihat jelas dan tidak memakai masker saat registrasi.
+                </div>
             </div>
 
-            <!-- Tab: DATABASE -->
+            <!-- Tab Content: DATABASE -->
             <div id="tab-database" class="admin-content hidden flex-1 overflow-y-auto p-4">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                        <h3 class="font-bold text-gray-700">Database Sekolah</h3>
+                        <h3 class="font-bold text-gray-700">Daftar Guru Terdaftar</h3>
                         <span id="total-users-badge" class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">0 User</span>
                     </div>
-                    
-                    <!-- NEW: Filter Buttons for easier management -->
-                    <div class="flex p-2 bg-white border-b border-gray-100 space-x-2">
-                        <button onclick="filterDatabase('All')" id="btn-filter-all" class="filter-btn active flex-1 py-2 text-xs font-bold rounded border border-gray-200 text-gray-600 transition">Semua</button>
-                        <button onclick="filterDatabase('Guru')" id="btn-filter-guru" class="filter-btn flex-1 py-2 text-xs font-bold rounded border border-gray-200 text-gray-500 hover:text-blue-600 transition">Guru</button>
-                        <button onclick="filterDatabase('Siswa')" id="btn-filter-siswa" class="filter-btn flex-1 py-2 text-xs font-bold rounded border border-gray-200 text-gray-500 hover:text-orange-600 transition">Siswa</button>
-                    </div>
-
                     <ul id="user-list" class="divide-y divide-gray-100">
+                        <!-- User items injected here -->
                         <li class="p-8 text-center text-gray-400 text-sm">Memuat data...</li>
                     </ul>
                 </div>
             </div>
 
-            <!-- Tab: EXPORT -->
+            <!-- Tab Content: EXPORT -->
             <div id="tab-export" class="admin-content hidden flex-1 overflow-y-auto p-4">
                 <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100 text-center space-y-4">
                     <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
                         <i class="fas fa-file-excel text-3xl"></i>
                     </div>
                     <div>
-                        <h3 class="font-bold text-lg text-gray-800">Export Laporan Absensi</h3>
-                        <p class="text-sm text-gray-500">Unduh data Guru & Siswa dalam format Excel (CSV).</p>
+                        <h3 class="font-bold text-lg text-gray-800">Export Data Absensi</h3>
+                        <p class="text-sm text-gray-500">Unduh riwayat kehadiran dalam format Excel (CSV).</p>
                     </div>
                     <div class="py-4">
                         <div class="flex justify-between text-sm text-gray-600 bg-gray-50 p-3 rounded mb-2">
@@ -217,16 +202,19 @@
                     <button onclick="exportToCSV()" class="w-full bg-green-600 hover:bg-green-700 text-white p-3 rounded-lg font-bold shadow-lg shadow-green-200 transition">
                         <i class="fas fa-download mr-2"></i> Download Laporan (.csv)
                     </button>
+                    
                     <hr class="border-gray-100 my-4">
+                    
                     <button onclick="clearAllAttendance()" class="text-xs text-red-500 hover:text-red-700 underline">
                         Hapus Seluruh Riwayat Absensi (Reset)
                     </button>
                 </div>
             </div>
         </section>
+
     </main>
 
-    <!-- Navigation -->
+    <!-- Bottom Navigation -->
     <nav class="bg-white border-t border-gray-200 fixed bottom-0 w-full z-40 h-16 flex justify-around items-center text-gray-400 shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
         <button onclick="navTo('home')" class="nav-item active text-indigo-600 flex flex-col items-center w-full transition" data-target="home">
             <i class="fas fa-home text-xl mb-1"></i><span class="text-[10px] font-medium">Beranda</span>
@@ -242,12 +230,13 @@
         </button>
     </nav>
 
-    <!-- FIREBASE & LOGIC -->
+    <!-- FIREBASE MODULE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, onSnapshot, query, orderBy, limit, Timestamp, doc, deleteDoc, updateDoc } 
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+        // --- KONFIGURASI FIREBASE ANDA ---
         const firebaseConfig = {
             apiKey: "AIzaSyABBrnNteB9H0sXEo1kfrPirSMcUjbfbsA",
             authDomain: "absensifacerecog.firebaseapp.com",
@@ -257,10 +246,12 @@
             appId: "1:396600041608:web:6db4157425783c12023f3d"
         };
 
+        // Initialize
         try {
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
             window.db = db;
+            // Expose Firestore functions globally
             window.collection = collection;
             window.addDoc = addDoc;
             window.getDocs = getDocs;
@@ -281,21 +272,23 @@
         }
     </script>
 
+    <!-- App Logic -->
     <script>
+        // --- VARIABLES ---
         let faceMatcher = null;
         let labeledDescriptors = [];
         let currentStream = null;
         let detectedUser = null;
         let isScannerRunning = false;
-        let allLogs = [];
-        let allUsersData = []; // Store users for filtering
-        let currentFilter = 'All';
+        let allLogs = []; // Store logs for export
 
+        // --- INIT ---
         window.onload = async () => {
             updateTime();
             setInterval(updateTime, 1000);
             
             try {
+                // Load AI Models
                 await Promise.all([
                     faceapi.nets.tinyFaceDetector.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models'),
                     faceapi.nets.faceLandmark68Net.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models'),
@@ -303,15 +296,20 @@
                     faceapi.nets.ssdMobilenetv1.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models')
                 ]);
 
+                // Hide loader
                 const loader = document.getElementById('loading-screen');
                 loader.classList.add('opacity-0');
                 setTimeout(() => loader.classList.add('hidden'), 500);
 
+                // Init Data Listeners
                 if(window.db) {
                     initUserListener();
                     initLogListener();
                 } else {
-                    setTimeout(() => { if(window.db) { initUserListener(); initLogListener(); } }, 2000);
+                    // Fallback retry if module loads slow
+                    setTimeout(() => {
+                        if(window.db) { initUserListener(); initLogListener(); }
+                    }, 2000);
                 }
 
             } catch (err) {
@@ -321,110 +319,71 @@
         };
 
         // --- FIREBASE LISTENERS ---
+
+        // 1. Listen Users (Build Matcher & Admin Table)
         function initUserListener() {
             const q = window.query(window.collection(window.db, "users"), window.orderBy("name"));
             window.onSnapshot(q, (snapshot) => {
                 labeledDescriptors = [];
-                allUsersData = []; // Reset local storage
+                const listEl = document.getElementById('user-list');
+                listEl.innerHTML = "";
                 let count = 0;
+
+                if(snapshot.empty) {
+                    listEl.innerHTML = '<li class="p-4 text-center text-sm text-gray-400">Belum ada data guru.</li>';
+                }
 
                 snapshot.forEach((docSnap) => {
                     const data = docSnap.data();
                     const docId = docSnap.id;
-                    const category = data.category || 'Guru';
-                    
-                    allUsersData.push({ id: docId, ...data, category });
+                    count++;
 
+                    // Add to AI Matcher
                     if(data.descriptor) {
                         const descriptor = new Float32Array(data.descriptor);
-                        const label = new faceapi.LabeledFaceDescriptors(`${data.name}|${data.role}|${category}`, [descriptor]);
+                        // Label format: "Name|Role|DocID" (Adding ID to handle edits later if needed)
+                        const label = new faceapi.LabeledFaceDescriptors(`${data.name}|${data.role}`, [descriptor]);
                         labeledDescriptors.push(label);
                     }
-                    count++;
+
+                    // Add to Admin List
+                    const li = document.createElement('li');
+                    li.className = "p-4 flex justify-between items-center hover:bg-gray-50 transition";
+                    li.innerHTML = `
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-sm">
+                                ${data.name.charAt(0)}
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-800">${data.name}</p>
+                                <p class="text-xs text-gray-500">${data.role}</p>
+                            </div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button onclick="editUser('${docId}', '${data.name}', '${data.role}')" class="text-blue-500 hover:bg-blue-50 p-2 rounded"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteUser('${docId}', '${data.name}')" class="text-red-500 hover:bg-red-50 p-2 rounded"><i class="fas fa-trash"></i></button>
+                        </div>
+                    `;
+                    listEl.appendChild(li);
                 });
 
                 document.getElementById('total-users-badge').innerText = `${count} User`;
                 
-                // Update UI based on current filter
-                renderUserList();
-
+                // Update Matcher
                 if (labeledDescriptors.length > 0) {
                     faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
                 }
             });
         }
 
-        // --- DATABASE UI LOGIC ---
-        function filterDatabase(type) {
-            currentFilter = type;
-            
-            // Update buttons style
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('active', 'bg-indigo-600', 'text-white');
-                btn.classList.add('text-gray-500', 'bg-white');
-            });
-
-            // Set active button
-            const activeBtnId = `btn-filter-${type.toLowerCase()}`;
-            const activeBtn = document.getElementById(activeBtnId);
-            if(activeBtn) {
-                activeBtn.classList.remove('bg-white', 'text-gray-500');
-                activeBtn.classList.add('active', 'bg-indigo-600', 'text-white');
-            }
-
-            renderUserList();
-        }
-
-        function renderUserList() {
-            const listEl = document.getElementById('user-list');
-            listEl.innerHTML = "";
-            
-            const filteredData = currentFilter === 'All' 
-                ? allUsersData 
-                : allUsersData.filter(u => u.category === currentFilter);
-
-            if(filteredData.length === 0) {
-                listEl.innerHTML = `<li class="p-8 text-center text-sm text-gray-400">Tidak ada data ${currentFilter !== 'All' ? currentFilter : ''}.</li>`;
-                return;
-            }
-
-            filteredData.forEach(data => {
-                const badgeColor = data.category === 'Siswa' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700';
-                const iconColor = data.category === 'Siswa' ? 'bg-orange-100 text-orange-600' : 'bg-indigo-100 text-indigo-600';
-
-                const li = document.createElement('li');
-                li.className = "p-4 flex justify-between items-center hover:bg-gray-50 transition";
-                li.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 ${iconColor} rounded-full flex items-center justify-center font-bold text-sm">
-                            ${data.name.charAt(0)}
-                        </div>
-                        <div>
-                            <div class="flex items-center space-x-2">
-                                <p class="text-sm font-bold text-gray-800">${data.name}</p>
-                                <span class="text-[9px] px-1.5 py-0.5 rounded font-bold ${badgeColor}">${data.category}</span>
-                            </div>
-                            <p class="text-xs text-gray-500">${data.role}</p>
-                        </div>
-                    </div>
-                    <div class="flex space-x-2">
-                        <button onclick="editUser('${data.id}', '${data.name}', '${data.role}')" class="text-blue-500 hover:bg-blue-50 p-2 rounded"><i class="fas fa-edit"></i></button>
-                        <button onclick="deleteUser('${data.id}', '${data.name}')" class="text-red-500 hover:bg-red-50 p-2 rounded"><i class="fas fa-trash"></i></button>
-                    </div>
-                `;
-                listEl.appendChild(li);
-            });
-        }
-
+        // 2. Listen Logs (Dashboard & Export Data)
         function initLogListener() {
             const q = window.query(window.collection(window.db, "attendance"), window.orderBy("timestamp", "desc"));
             window.onSnapshot(q, (snapshot) => {
-                allLogs = [];
+                allLogs = []; // Reset global logs for export
                 const dashboardList = document.getElementById('dashboard-logs');
                 dashboardList.innerHTML = "";
-                
-                let guruCount = 0;
-                let siswaCount = 0;
+                let todayCount = 0;
                 const todayStr = new Date().toDateString();
 
                 if(snapshot.empty) {
@@ -435,34 +394,29 @@
 
                 snapshot.forEach(doc => {
                     const data = doc.data();
-                    allLogs.push(data);
+                    allLogs.push(data); // Store for CSV
 
                     const dateObj = data.timestamp ? new Date(data.timestamp.seconds * 1000) : new Date();
-                    const category = data.category || 'Guru'; 
-
-                    // Count Stats
+                    
+                    // Count Today's Attendance (Check IN only)
                     if(dateObj.toDateString() === todayStr && data.type === 'Masuk') {
-                        if(category === 'Siswa') siswaCount++;
-                        else guruCount++;
+                        todayCount++;
                     }
 
+                    // Render only top 10 in Dashboard
                     if(dashboardList.children.length < 10) {
                         const timeStr = dateObj.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
                         const statusColor = data.type === 'Masuk' ? 'text-green-600 bg-green-50' : 'text-red-500 bg-red-50';
-                        const badgeColor = category === 'Siswa' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600';
                         
                         const item = `
                             <div class="p-4 flex justify-between items-center">
                                 <div class="flex items-center space-x-3">
-                                    <div class="w-8 h-8 rounded-full ${badgeColor} flex items-center justify-center text-xs font-bold">
-                                        ${data.name.charAt(0)}
+                                    <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+                                        <i class="fas fa-user"></i>
                                     </div>
                                     <div>
                                         <p class="text-sm font-bold text-gray-800">${data.name}</p>
-                                        <div class="flex items-center space-x-2">
-                                            <span class="text-[9px] px-1 py-0 rounded bg-gray-100 text-gray-500">${category}</span>
-                                            <p class="text-[10px] text-gray-400">${dateObj.toLocaleDateString('id-ID')}</p>
-                                        </div>
+                                        <p class="text-[10px] text-gray-400">${dateObj.toLocaleDateString('id-ID')}</p>
                                     </div>
                                 </div>
                                 <div class="text-right">
@@ -475,13 +429,12 @@
                     }
                 });
 
-                document.getElementById('stat-present-guru').innerText = guruCount;
-                document.getElementById('stat-present-siswa').innerText = siswaCount;
+                document.getElementById('stat-present').innerText = todayCount;
                 document.getElementById('total-logs-count').innerText = allLogs.length;
             });
         }
 
-        // --- SCANNER ---
+        // --- SCANNER LOGIC ---
         async function startScanner() {
             if(isScannerRunning) return;
             const video = document.getElementById('video-feed');
@@ -506,14 +459,16 @@
                         if(detections.length > 0 && faceMatcher) {
                             const resizedDetections = faceapi.resizeResults(detections, displaySize);
                             const bestMatch = faceMatcher.findBestMatch(resizedDetections[0].descriptor);
+
                             const scanBox = document.getElementById('scan-box');
 
                             if(bestMatch.label !== 'unknown') {
+                                // Match Found
                                 scanBox.classList.add('active');
-                                // Parse: Name|Role|Category
                                 const parts = bestMatch.label.split('|');
-                                handleMatchFound(parts[0], parts[1] || '-', parts[2] || 'Guru');
+                                handleMatchFound(parts[0], parts[1] || 'Guru');
                             } else {
+                                // Unknown
                                 scanBox.classList.remove('active');
                             }
                         }
@@ -526,24 +481,23 @@
             }
         }
 
-        function handleMatchFound(name, role, category) {
-            if(detectedUser) return;
+        function handleMatchFound(name, role) {
+            if(detectedUser) return; // Prevent loop
             
-            detectedUser = { name, role, category };
+            detectedUser = { name, role };
             document.getElementById('result-name').innerText = name;
             document.getElementById('result-role').innerText = role;
-            document.getElementById('result-category').innerText = category;
+            document.getElementById('result-img').src = `https://ui-avatars.com/api/?name=${name}&background=random`;
             
-            const img = document.getElementById('result-img');
-            img.src = `https://ui-avatars.com/api/?name=${name}&background=random`;
-            img.className = `w-16 h-16 rounded-full object-cover border-4 shadow-md ${category === 'Siswa' ? 'border-orange-400' : 'border-blue-500'}`;
-
             const card = document.getElementById('result-card');
             card.classList.remove('hidden');
-            requestAnimationFrame(() => { card.classList.remove('translate-y-20', 'opacity-0'); });
+            // Animation
+            requestAnimationFrame(() => {
+                card.classList.remove('translate-y-20', 'opacity-0');
+            });
 
-            document.getElementById('scan-status').innerHTML = `<i class="fas fa-check-circle mr-1"></i> ${category} Dikenali!`;
-            document.getElementById('scan-status').className = `text-white px-5 py-2 rounded-full text-sm shadow-lg font-bold ${category === 'Siswa' ? 'bg-orange-600' : 'bg-blue-600'}`;
+            document.getElementById('scan-status').innerHTML = `<i class="fas fa-check-circle mr-1"></i> Wajah Dikenali!`;
+            document.getElementById('scan-status').className = "bg-green-600 text-white px-5 py-2 rounded-full text-sm shadow-lg font-bold";
         }
 
         async function logAttendance(type) {
@@ -552,17 +506,17 @@
                 await window.addDoc(window.collection(window.db, "attendance"), {
                     name: detectedUser.name,
                     role: detectedUser.role,
-                    category: detectedUser.category,
                     type: type,
                     timestamp: window.Timestamp.now(),
                     device: navigator.userAgent
                 });
                 
+                // Success feedback
                 Swal.fire({
                     icon: 'success',
                     title: `Absen ${type}`,
-                    text: `${detectedUser.category}: ${detectedUser.name}`,
-                    timer: 1500,
+                    text: `Berhasil mencatat ${detectedUser.name}`,
+                    timer: 2000,
                     showConfirmButton: false
                 });
 
@@ -579,43 +533,36 @@
             const card = document.getElementById('result-card');
             card.classList.add('translate-y-20', 'opacity-0');
             setTimeout(() => card.classList.add('hidden'), 300);
+            
             document.getElementById('scan-box').classList.remove('active');
             document.getElementById('scan-status').innerHTML = `<i class="fas fa-search mr-2"></i>Mencari Wajah...`;
             document.getElementById('scan-status').className = "bg-black/60 text-white px-5 py-2 rounded-full text-sm backdrop-blur-md border border-white/10 shadow-lg";
         }
 
-        // --- ADMIN ---
+        // --- ADMIN FUNCTIONS ---
+
+        // Security
         function authAdmin() {
             Swal.fire({
                 title: 'Masuk Admin',
                 input: 'password',
-                inputPlaceholder: 'PIN (Default: 1234)',
+                inputPlaceholder: 'Masukkan PIN (Default: 1234)',
                 inputAttributes: { maxlength: 4, autocapitalize: 'off', autocorrect: 'off' },
                 showCancelButton: true,
                 confirmButtonText: 'Masuk',
                 confirmButtonColor: '#4f46e5'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    if(result.value === '1234') navTo('admin');
-                    else Swal.fire('Akses Ditolak', 'PIN Salah!', 'error');
+                    if(result.value === '1234') {
+                        navTo('admin');
+                    } else {
+                        Swal.fire('Akses Ditolak', 'PIN Salah!', 'error');
+                    }
                 }
             });
         }
 
-        function updateRegPlaceholder() {
-            const cat = document.getElementById('reg-category').value;
-            const roleLabel = document.getElementById('lbl-reg-role');
-            const roleInput = document.getElementById('reg-role');
-            
-            if(cat === 'Siswa') {
-                roleLabel.innerText = "Kelas";
-                roleInput.placeholder = "Contoh: XII IPA 1";
-            } else {
-                roleLabel.innerText = "Jabatan / Mapel";
-                roleInput.placeholder = "Contoh: Guru Matematika";
-            }
-        }
-
+        // Register
         async function startRegCamera() {
             const video = document.getElementById('reg-video');
             try {
@@ -625,45 +572,45 @@
         }
 
         async function registerFace() {
-            const cat = document.getElementById('reg-category').value;
             const name = document.getElementById('reg-name').value;
             const role = document.getElementById('reg-role').value;
             const video = document.getElementById('reg-video');
             
-            if(!name || !role) return Swal.fire("Lengkapi Data", "Nama dan Jabatan/Kelas wajib diisi.", "warning");
+            if(!name || !role) return Swal.fire("Lengkapi Data", "Nama dan Jabatan wajib diisi.", "warning");
             
             Swal.fire({ title: 'Memproses...', text: 'Tahan posisi wajah...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
+            // Use SSD MobileNet for accurate registration
             const detection = await faceapi.detectSingleFace(video, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks().withFaceDescriptor();
 
             if(detection) {
                 const descriptorArray = Array.from(detection.descriptor);
                 try {
                     await window.addDoc(window.collection(window.db, "users"), {
-                        category: cat,
                         name: name,
                         role: role,
                         descriptor: descriptorArray,
                         createdAt: window.Timestamp.now()
                     });
                     
-                    Swal.fire("Berhasil", `Data ${cat} ${name} tersimpan!`, "success");
+                    Swal.fire("Berhasil", `Data ${name} tersimpan!`, "success");
                     document.getElementById('reg-name').value = "";
                     document.getElementById('reg-role').value = "";
                 } catch(e) {
                     Swal.fire("Gagal", e.message, "error");
                 }
             } else {
-                Swal.fire("Wajah Tidak Terdeteksi", "Pastikan pencahayaan cukup.", "warning");
+                Swal.fire("Wajah Tidak Terdeteksi", "Pastikan pencahayaan cukup dan wajah terlihat jelas.", "warning");
             }
         }
 
+        // Edit Data
         async function editUser(docId, oldName, oldRole) {
             const { value: formValues } = await Swal.fire({
-                title: 'Edit Data',
+                title: 'Edit Data Guru',
                 html:
                     `<input id="swal-input1" class="swal2-input" placeholder="Nama" value="${oldName}">` +
-                    `<input id="swal-input2" class="swal2-input" placeholder="Jabatan/Kelas" value="${oldRole}">`,
+                    `<input id="swal-input2" class="swal2-input" placeholder="Jabatan" value="${oldRole}">`,
                 focusConfirm: false,
                 showCancelButton: true,
                 preConfirm: () => {
@@ -676,19 +623,23 @@
 
             if (formValues) {
                 try {
-                    await window.updateDoc(window.doc(window.db, "users", docId), {
+                    const userRef = window.doc(window.db, "users", docId);
+                    await window.updateDoc(userRef, {
                         name: formValues[0],
                         role: formValues[1]
                     });
                     Swal.fire('Update Berhasil', '', 'success');
-                } catch(e) { Swal.fire('Error', e.message, 'error'); }
+                } catch(e) {
+                    Swal.fire('Error', e.message, 'error');
+                }
             }
         }
 
+        // Delete Data
         async function deleteUser(docId, name) {
             Swal.fire({
                 title: `Hapus ${name}?`,
-                text: "Data akan hilang permanen!",
+                text: "Data wajah akan hilang permanen!",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
@@ -697,65 +648,78 @@
                 if (result.isConfirmed) {
                     try {
                         await window.deleteDoc(window.doc(window.db, "users", docId));
-                        Swal.fire('Terhapus!', 'Data telah dihapus.', 'success');
-                    } catch(e) { Swal.fire('Error', e.message, 'error'); }
+                        Swal.fire('Terhapus!', 'Data guru telah dihapus.', 'success');
+                    } catch(e) {
+                        Swal.fire('Error', e.message, 'error');
+                    }
                 }
             });
         }
 
+        // Export CSV
         function exportToCSV() {
             if(allLogs.length === 0) return Swal.fire("Data Kosong", "Belum ada riwayat absensi.", "info");
 
             let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Tanggal,Jam,Kategori,Nama,Jabatan/Kelas,Status,Device\n";
+            csvContent += "Tanggal,Jam,Nama,Jabatan,Status,Device\n";
 
             allLogs.forEach(log => {
                 const dateObj = log.timestamp ? new Date(log.timestamp.seconds * 1000) : new Date();
-                const category = log.category || 'Guru';
-                const row = `${dateObj.toLocaleDateString('id-ID')},${dateObj.toLocaleTimeString('id-ID')},"${category}","${log.name}","${log.role}",${log.type},"${log.device || '-'}"`;
+                const date = dateObj.toLocaleDateString('id-ID');
+                const time = dateObj.toLocaleTimeString('id-ID');
+                const row = `${date},${time},"${log.name}","${log.role}",${log.type},"${log.device || '-'}"`;
                 csvContent += row + "\n";
             });
 
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Absensi_Sekolah_${new Date().toISOString().slice(0,10)}.csv`);
+            link.setAttribute("download", `Laporan_Absensi_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
 
+        // Clear All Logs
         async function clearAllAttendance() {
             Swal.fire({
                 title: 'Reset Absensi?',
-                text: "Semua riwayat akan dihapus! Data user AMAN.",
+                text: "Semua riwayat absensi akan dihapus! Data guru TETAP AMAN.",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
                 confirmButtonText: 'RESET SEMUA'
             }).then(async (result) => {
                 if (result.isConfirmed) {
+                    // Note: Client side deletion of collection needs looping.
+                    // For 50 users it's fine, for 1000+ safer to do via Console.
                     Swal.fire({title: 'Menghapus...', didOpen: () => Swal.showLoading()});
                     const q = window.query(window.collection(window.db, "attendance"));
                     const snapshot = await window.getDocs(q);
                     const deletePromises = [];
-                    snapshot.forEach(doc => { deletePromises.push(window.deleteDoc(doc.ref)); });
+                    snapshot.forEach(doc => {
+                        deletePromises.push(window.deleteDoc(doc.ref));
+                    });
                     await Promise.all(deletePromises);
                     Swal.fire('Selesai', 'Riwayat absensi bersih.', 'success');
                 }
             });
         }
 
+        // --- UTILS ---
         function navTo(target) {
+            // Camera Handling
             if(target === 'scan' && !isScannerRunning) startScanner();
             if(target !== 'scan' && isScannerRunning) {
                 isScannerRunning = false;
                 if(currentStream) currentStream.getTracks().forEach(t => t.stop());
             }
 
+            // View Switching
             document.querySelectorAll('section').forEach(el => el.classList.add('hidden'));
             document.getElementById(`view-${target}`).classList.remove('hidden');
 
+            // Bottom Nav Active State
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('text-indigo-600', 'active'));
             document.querySelector(`.nav-item[data-target="${target}"]`).classList.add('text-indigo-600', 'active');
 
@@ -763,15 +727,18 @@
         }
 
         function switchAdminTab(tabName) {
+            // Tab Buttons
             document.querySelectorAll('.tab-btn').forEach(el => {
                 el.classList.remove('active', 'border-indigo-600', 'text-indigo-600');
                 if(el.dataset.tab === tabName) el.classList.add('active', 'border-indigo-600', 'text-indigo-600');
             });
+            // Tab Content
             document.querySelectorAll('.admin-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`tab-${tabName}`).classList.remove('hidden');
 
             if(tabName === 'register') startRegCamera();
             else {
+                // Stop admin camera if leaving register tab
                 const v = document.getElementById('reg-video');
                 if(v.srcObject) v.srcObject.getTracks().forEach(t => t.stop());
             }
